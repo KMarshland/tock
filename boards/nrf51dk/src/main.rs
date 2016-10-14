@@ -46,8 +46,9 @@ extern crate nrf51;
 use capsules::timer::TimerDriver;
 use capsules::virtual_alarm::{MuxAlarm, VirtualMuxAlarm};
 use kernel::{Chip, SysTick};
-use nrf51::rtc::{RTC, Rtc};
 use kernel::hil::gpio::Pin;
+use kernel::hil::uart::UART;
+use nrf51::rtc::{RTC, Rtc};
 use nrf51::timer::TimerAlarm;
 
 // The nRF51 DK LEDs (see back of board)
@@ -158,10 +159,18 @@ pub unsafe fn reset_handler() {
                                        kernel::Container::create()),
         24);
     nrf51::uart::UART0.set_client(console);
-    
+
     let alarm = &nrf51::rtc::RTC;
     alarm.start();
     let mux_alarm = static_init!(MuxAlarm<'static, Rtc>, MuxAlarm::new(&RTC), 16);
+
+    nrf51::uart::UART0.init(kernel::hil::uart::UARTParams {
+        baud_rate: 115200,
+        data_bits: 8,
+        parity: kernel::hil::uart::Parity::None,
+        mode: kernel::hil::uart::Mode::Normal,
+    });
+
     alarm.set_client(mux_alarm);
 
     let virtual_alarm1 = static_init!(
@@ -202,6 +211,7 @@ pub unsafe fn reset_handler() {
     let mut chip = nrf51::chip::NRF51::new();
     chip.systick().reset();
     chip.systick().enable(true);
+
     kernel::main(platform, &mut chip, load_process());
 
 }
